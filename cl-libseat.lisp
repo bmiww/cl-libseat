@@ -156,7 +156,7 @@ See default-log-handler for a partial implementation lacking variadic parsing"
   (with-foreign-object (fd :int)
     (let ((device-id (%open-device seat path fd)))
       (if (>= device-id 0)
-	  (values device-id fd)
+	  (values device-id (mem-ref fd :int))
 	  (error "Failed to open device")))))
 
 (defun set-log-handler (handler &key callback)
