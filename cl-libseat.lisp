@@ -12,6 +12,7 @@
   (t (:default "libseat")))
 
 (use-foreign-library libseat)
+(defvar *help* (load-foreign-library (asdf:output-file 'asdf:compile-op (asdf:find-component :cl-libseat "help"))))
 
 ;; ┌─┐┌┬┐┬─┐┬ ┬┌─┐┌┬┐┬ ┬┬─┐┌─┐
 ;; └─┐ │ ├┬┘│ ││   │ │ │├┬┘├┤
@@ -42,7 +43,7 @@
   (seat :pointer))
 
 ;; Int returned is the device id - this can be used for close-device
-(defcfun ("libseat_open_device" *open-device) :int
+(defcfun ("libseat_open_device" %open-device) :int
   (seat :pointer)
   (path :string)
   (fd (:pointer :int)))
@@ -95,6 +96,7 @@
 ;; ┬  ┬┌─┐┌─┐
 ;; │  │└─┐├─┘
 ;; ┴─┘┴└─┘┴
+;; This would try to interface with
 (defun default-log-handler (level format data)
   (let ((types nil))
     (cl-ppcre:do-scans (match-start match-end reg-starts reg-ends "(%s|%d)" format)
@@ -137,23 +139,26 @@ Two callbacks are required, via the keys
 the creation of the pointer is left up to the user.
 If :user-data is not provided a null-pointer is used.
 
-Additionally a log-handler can be provided, if T the default log handler is used"
+Additionally a log-handler can be provided, if T the default log handler (printf) is used
+Use at your own risk - the function receives variadic arguments which aren't supported
+by cffi (i should probably disable that feature)
+See default-log-handler for a partial implementation lacking variadic parsing"
 
   (unless enable-seat (error "enable-seat callback required"))
   (unless disable-seat (error "disable-seat callback required"))
   (etypecase log-handler
-    ((eql T) (set-log-handler 'default-log-handler))
+    ((eql T) (set-log-handler nil :callback (foreign-symbol-pointer "log_printf" :library *help*)))
     (function (set-log-handler log-handler)))
 
   (%open-seat (make-libseat-seat-listener enable-seat disable-seat) (or user-data (null-pointer))))
 
 (defun open-device (seat path)
   (with-foreign-object (fd :int)
-    (let ((device-id (open-device seat path fd)))
+    (let ((device-id (%open-device seat path fd)))
       (if (>= device-id 0)
 	  (values device-id fd)
 	  (error "Failed to open device")))))
 
-(defun set-log-handler (handler)
-  (setf *log-handler-lisp* handler)
-  (%set-log-handler (callback log-handler-c)))
+(defun set-log-handler (handler &key callback)
+  (when handler (setf *log-handler-lisp* handler))
+  (%set-log-handler (or callback (callback log-handler-c))))
