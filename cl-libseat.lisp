@@ -95,6 +95,28 @@
 ;; ┬  ┬┌─┐┌─┐
 ;; │  │└─┐├─┘
 ;; ┴─┘┴└─┘┴
+(defun default-log-handler (level format data)
+  (let ((types nil))
+    (cl-ppcre:do-scans (match-start match-end reg-starts reg-ends "(%s|%d)" format)
+      (case (char format (+ 1 match-start))
+	(#\s (push :string types))
+	(#\d (push :int types))))
+
+    (format t "~a: ~a~%" level
+	    (apply 'format nil
+		   (cl-ppcre:regex-replace-all "(%s|%d)" format "~a")
+		   (loop for i below (length types)
+			 for type in types
+			 collect
+			 ;; TODO: Accessing va-list arguments directly is not supported in CFFI
+			 ;; Would require some extra hackery
+			 ;; (case type
+			   ;; (:string (mem-aref data :string i))
+			   ;; (:int (mem-aref data :int i)))
+			 "TODO"
+			 )))))
+
+
 (defun make-libseat-seat-listener (enable-seat-lisp disable-seat-lisp)
   (setf *enable-seat* enable-seat-lisp *disable-seat* disable-seat-lisp)
   (let ((listener (foreign-alloc '(:struct libseat-seat-listener))))
@@ -103,7 +125,7 @@
 	    disable-seat (callback disable-seat-cb)))
     listener))
 
-(defun open-seat (&key enable-seat disable-seat user-data)
+(defun open-seat (&key enable-seat disable-seat user-data log-handler)
   "Create a new libseat seat context
 Two callbacks are required, via the keys
 :enable-seat and :disable-seat
@@ -113,10 +135,16 @@ Two callbacks are required, via the keys
 
 :user-data is a pointer to user data which will be passed to the callbacks,
 the creation of the pointer is left up to the user.
-If :user-data is not provided a null-pointer is used."
+If :user-data is not provided a null-pointer is used.
+
+Additionally a log-handler can be provided, if T the default log handler is used"
 
   (unless enable-seat (error "enable-seat callback required"))
   (unless disable-seat (error "disable-seat callback required"))
+  (etypecase log-handler
+    ((eql T) (set-log-handler 'default-log-handler))
+    (function (set-log-handler log-handler)))
+
   (%open-seat (make-libseat-seat-listener enable-seat disable-seat) (or user-data (null-pointer))))
 
 (defun open-device (seat path)
@@ -128,4 +156,4 @@ If :user-data is not provided a null-pointer is used."
 
 (defun set-log-handler (handler)
   (setf *log-handler-lisp* handler)
-  (%set-log-handler (callback handler)))
+  (%set-log-handler (callback log-handler-c)))

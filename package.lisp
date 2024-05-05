@@ -11,4 +11,4 @@
    open-seat disable-seat close-seat seat-name
    open-device close-device
    dispatch get-fd switch-session
-   set-log-handler set-log-level))
+   set-log-level))
