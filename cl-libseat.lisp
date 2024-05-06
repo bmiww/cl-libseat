@@ -150,7 +150,8 @@ See default-log-handler for a partial implementation lacking variadic parsing"
     ((eql T) (set-log-handler nil :callback (foreign-symbol-pointer "log_printf" :library *help*)))
     (function (set-log-handler log-handler)))
 
-  (%open-seat (make-libseat-seat-listener enable-seat disable-seat) (or user-data (null-pointer))))
+  (let ((seat (%open-seat (make-libseat-seat-listener enable-seat disable-seat) (or user-data (null-pointer)))))
+    (if (null-pointer-p seat) nil seat)))
 
 (defun open-device (seat path)
   (with-foreign-object (fd :int)
