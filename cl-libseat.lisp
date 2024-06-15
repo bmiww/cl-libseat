@@ -39,7 +39,7 @@
 (defcfun ("libseat_disable_seat" disable-seat) :int
   (seat :pointer))
 
-(defcfun ("libseat_close_seat" close-seat) :int
+(defcfun ("libseat_close_seat" %close-seat) :int
   (seat :pointer))
 
 ;; Int returned is the device id - this can be used for close-device
@@ -152,6 +152,8 @@ See default-log-handler for a partial implementation lacking variadic parsing"
 
   (let ((seat (%open-seat (make-libseat-seat-listener enable-seat disable-seat) (or user-data (null-pointer)))))
     (if (null-pointer-p seat) nil seat)))
+
+(defun close-seat (seat) (%close-seat seat))
 
 (defun open-device (seat path)
   (with-foreign-object (fd :int)
