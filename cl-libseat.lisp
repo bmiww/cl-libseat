@@ -160,7 +160,7 @@ See default-log-handler for a partial implementation lacking variadic parsing"
     (let ((device-id (%open-device seat path fd)))
       (if (>= device-id 0)
 	  (values device-id (mem-ref fd :int))
-	  (error "Failed to open device")))))
+	  (error (format nil "Failed to open device. Error: ~a" device-id))))))
 
 (defun set-log-handler (handler &key callback)
   (when handler (setf *log-handler-lisp* handler))
