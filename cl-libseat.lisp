@@ -77,6 +77,20 @@
 ;; ┌─┐┌─┐┬  ┬  ┌┐ ┌─┐┌─┐┬┌─┌─┐
 ;; │  ├─┤│  │  ├┴┐├─┤│  ├┴┐└─┐
 ;; └─┘┴ ┴┴─┘┴─┘└─┘┴ ┴└─┘┴ ┴└─┘
+(defcenum pa-flag-mask
+  :int
+  :char
+  :string
+  :pointer
+  :float
+  :double
+  :last
+  :flag-ptr
+  :flag-short
+  :flag-long
+  :flag-long-long
+  :flag-long-double)
+
 ;; TODO: Could also translate the c printf format to lisp format i guess but leaving up to implementer
 (defvar *log-handler-lisp* nil)
 (defcallback log-handler-c :void
@@ -84,6 +98,22 @@
    ;; va_list in their header. no clue. can't be bothered.
    (data :pointer))
   (funcall *log-handler-lisp* level format data))
+
+(defcallback parsed-callback :void ((format :string) (num-args :int) (arg-types (:pointer pa-flag-mask)) (args :pointer))
+  (let ((args
+	  (loop for i from 0 below num-args
+		for arg-type = (mem-aref arg-types i)
+		for arg = (mem-aref args i (case arg-type
+					     (:int :int)
+					     (:char :char)
+					     (:string :string)
+					     (:pointer :pointer)
+					     (:float :float)
+					     (:double :double)
+					     (t (error "Unhandled arg type. %s:::I didn't cover bit flags and :last" arg-type))))
+		collect arg))))
+
+  (funcall *log-handler-lisp* format args))
 
 (defvar *enable-seat* nil)
 (defcallback enable-seat-cb :void ((seat :pointer) (data :pointer))
@@ -98,6 +128,7 @@
 ;; ┴─┘┴└─┘┴
 ;; This would try to interface with
 (defun default-log-handler (level format data)
+  (declare (ignore data))
   (let ((types nil))
     (cl-ppcre:do-scans (match-start match-end reg-starts reg-ends "(%s|%d)" format)
       (case (char format (+ 1 match-start))
@@ -148,7 +179,7 @@ See default-log-handler for a partial implementation lacking variadic parsing"
   (unless disable-seat (error "disable-seat callback required"))
   (etypecase log-handler
     ((eql T) (set-log-handler nil :callback (foreign-symbol-pointer "log_printf" :library *help*)))
-    (function (set-log-handler log-handler)))
+    (function (set-log-handler log-handler :callback (foreign-symbol-pointer "parse_and_callback" :library *help*))))
 
   (let ((seat (%open-seat (make-libseat-seat-listener enable-seat disable-seat) (or user-data (null-pointer)))))
     (if (null-pointer-p seat) nil seat)))
