@@ -10,16 +10,16 @@ void log_printf(int level, const char *format, va_list args) {
   vfprintf(stderr, buf, args);
 }
 
-void parse_and_callback(int level, const char *format, va_list args) {
-  char buf[1024];
-  int *argtypes;
-  size_t num_args = parse_printf_format(format, 0, argtypes);
+// void parse_and_callback(int level, const char *format, va_list args) {
+  // char buf[1024];
+  // int *argtypes;
+  // size_t num_args = parse_printf_format(format, 0, argtypes);
 
-  callback(format, num_args, argtypes, args);
-}
+  // callback(format, num_args, argtypes, args);
+// }
 
-void (*callback)(const char *, size_t, int *, void *) = NULL;
+// void (*callback)(const char *, size_t, int *, void *) = NULL;
 
-void set_callback(void (*cb)(const char *, size_t, int *, void *)) {
-  callback = cb;
-}
+// void set_callback(void (*cb)(const char *, size_t, int *, void *)) {
+  // callback = cb;
+// }
